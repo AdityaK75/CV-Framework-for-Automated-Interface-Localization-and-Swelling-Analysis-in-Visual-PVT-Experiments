@@ -1,0 +1,1578 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>PVT Auto Swelling Factor</title>
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            }
+
+            body {
+                background: #0f1115;
+                color: #e2e8f0;
+                display: flex;
+                height: 100vh;
+                overflow: hidden;
+            }
+
+            .container {
+                display: flex;
+                width: 100%;
+                height: 100%;
+            }
+
+            /* ── LEFT PANEL ── */
+            .left-panel {
+                width: 340px;
+                min-width: 340px;
+                background: #161b22;
+                border-right: 1px solid #30363d;
+                overflow-y: auto;
+                padding: 16px;
+                display: flex;
+                flex-direction: column;
+            }
+
+            h1 {
+                font-size: 16px;
+                font-weight: 700;
+                color: #f8fafc;
+                text-align: center;
+                margin: 4px 0 16px;
+                letter-spacing: 0.5px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+            }
+
+            .step-header {
+                font-size: 11px;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                background: #21262d;
+                padding: 6px 10px;
+                margin: 16px 0 8px;
+                border-radius: 4px;
+                border-left: 3px solid #58a6ff;
+                color: #c9d1d9;
+            }
+
+            .sep {
+                height: 1px;
+                background: #30363d;
+                margin: 16px 0;
+            }
+
+            button {
+                width: 100%;
+                padding: 8px 12px;
+                margin: 4px 0;
+                border: none;
+                border-radius: 6px;
+                font-size: 13px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            }
+
+            button:active {
+                transform: scale(0.98);
+            }
+
+            .btn-primary { background: #238636; color: #fff; }
+            .btn-primary:hover { background: #2ea043; }
+
+            .btn-secondary { background: #1f6feb; color: #fff; }
+            .btn-secondary:hover { background: #388bfd; }
+
+            .btn-warning { background: #d29922; color: #fff; }
+            .btn-warning:hover { background: #e3b341; }
+
+            .btn-danger { background: #da3633; color: #fff; }
+            .btn-danger:hover { background: #f85149; }
+
+            .btn-run {
+                background: linear-gradient(135deg, #8a2be2, #4169e1);
+                color: #fff;
+                font-size: 14px;
+                padding: 14px;
+                border-radius: 8px;
+                letter-spacing: 0.5px;
+                box-shadow: 0 4px 12px rgba(65, 105, 225, 0.3);
+            }
+            .btn-run:hover {
+                box-shadow: 0 6px 16px rgba(65, 105, 225, 0.5);
+                filter: brightness(1.1);
+            }
+
+            .btn-util { background: #30363d; color: #c9d1d9; font-size: 12px; padding: 8px; }
+            .btn-util:hover { background: #8b949e; color: #fff; }
+
+            .btn-mini {
+                width: auto;
+                padding: 4px 10px;
+                font-size: 11px;
+                border-radius: 4px;
+                margin: 0;
+                background: #30363d;
+                color: #c9d1d9;
+                border: 1px solid rgba(240,246,252,0.1);
+            }
+            .btn-mini:hover { background: #8b949e; color: #fff; }
+            .btn-mini.roi-active {
+                background: #d29922;
+                color: #fff;
+                border-color: #e3b341;
+                animation: pulse 1.5s infinite alternate;
+            }
+            @keyframes pulse { from { opacity: 1; box-shadow: 0 0 0 0 rgba(210,153,34,0.7); } to { opacity: 0.8; box-shadow: 0 0 0 4px rgba(210,153,34,0); } }
+
+            input[type="text"],
+            input[type="number"],
+            input[type="file"],
+            select {
+                width: 100%;
+                padding: 8px 10px;
+                margin: 4px 0;
+                background: #0d1117;
+                border: 1px solid #30363d;
+                color: #c9d1d9;
+                border-radius: 6px;
+                font-size: 13px;
+                transition: border-color 0.2s, box-shadow 0.2s;
+            }
+
+            input:focus, select:focus {
+                outline: none;
+                border-color: #58a6ff;
+                box-shadow: 0 0 0 2px rgba(88,166,255,0.3);
+            }
+
+            label {
+                display: block;
+                font-size: 12px;
+                font-weight: 500;
+                color: #8b949e;
+                margin-top: 8px;
+            }
+
+            .info-text {
+                font-size: 11px;
+                color: #6e7681;
+                font-style: italic;
+                margin: 4px 0 8px;
+            }
+
+            .status {
+                padding: 8px 12px;
+                margin: 6px 0;
+                border-radius: 6px;
+                font-size: 12px;
+                font-family: 'Inter', monospace;
+                white-space: pre-wrap;
+                line-height: 1.5;
+                font-weight: 500;
+            }
+            .status-empty { background: rgba(210,153,34,0.15); color: #e3b341; border: 1px solid rgba(210,153,34,0.4); }
+            .status-ready { background: rgba(46,160,67,0.15); color: #3fb950; border: 1px solid rgba(46,160,67,0.4); }
+            .status-result { background: rgba(56,139,253,0.15); color: #58a6ff; border: 1px solid rgba(56,139,253,0.4); }
+            .status-error { background: rgba(248,81,73,0.15); color: #ff7b72; border: 1px solid rgba(248,81,73,0.4); }
+
+            /* ── Load row ── */
+            .load-row {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin: 4px 0;
+            }
+            .load-row label { margin: 0; min-width: 80px; font-size: 12px; }
+            .load-row input[type="file"] { flex: 1; margin: 0; padding: 6px; }
+            .load-row button { width: auto; padding: 6px 12px; margin: 0; }
+
+            /* ── Calibration distance box ── */
+            .calib-mm-box {
+                display: flex;
+                align-items: center;
+                background: rgba(210,153,34,0.1);
+                border: 1px solid rgba(210,153,34,0.3);
+                border-radius: 8px;
+                padding: 10px 12px;
+                gap: 12px;
+                margin: 8px 0;
+            }
+            .calib-mm-icon { font-size: 20px; }
+            .calib-mm-label {
+                flex: 1;
+                font-size: 12px;
+                font-weight: 600;
+                color: #e3b341;
+            }
+            .calib-mm-input {
+                width: 80px !important;
+                font-size: 15px !important;
+                font-weight: 700;
+                text-align: center;
+                border: 1px solid rgba(210,153,34,0.5) !important;
+                background: #0d1117 !important;
+                color: #e3b341 !important;
+                border-radius: 6px;
+                margin: 0 !important;
+                padding: 6px !important;
+            }
+            .calib-mm-unit { font-size: 13px; font-weight: 600; color: #e3b341; }
+
+            /* ── Results card ── */
+            .results-card {
+                background: #21262d;
+                border: 1px solid #30363d;
+                border-radius: 8px;
+                padding: 12px;
+                margin-top: 8px;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            }
+            .result-row {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                padding: 6px 0;
+                border-bottom: 1px solid #30363d;
+                font-family: 'Inter', monospace;
+                font-size: 12px;
+                gap: 8px;
+            }
+            .result-row:last-of-type { border-bottom: none; }
+            .result-slot { font-weight: 600; color: #c9d1d9; }
+            .result-vals { color: #58a6ff; text-align: right; line-height: 1.6; }
+            .swelling-box {
+                background: rgba(46,160,67,0.1);
+                border: 1px solid rgba(46,160,67,0.3);
+                border-radius: 6px;
+                padding: 10px;
+                text-align: center;
+                font-size: 15px;
+                font-weight: 700;
+                color: #3fb950;
+                margin-top: 10px;
+            }
+
+            /* ── RIGHT PANEL & GALLERY ── */
+            .right-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: row;
+                background: #010409;
+                overflow: hidden;
+            }
+
+            .main-viewer {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                min-width: 0;
+            }
+
+            .gallery-panel {
+                width: 260px;
+                background: #161b22;
+                border-left: 1px solid #30363d;
+                display: flex;
+                flex-direction: column;
+                padding: 12px;
+                overflow-y: auto;
+            }
+
+            .gallery-item {
+                background: #21262d;
+                border: 1px solid #30363d;
+                border-radius: 8px;
+                padding: 10px;
+                margin-bottom: 10px;
+                cursor: pointer;
+                color: #c9d1d9;
+                transition: all 0.2s ease;
+            }
+            .gallery-item:hover {
+                background: #30363d;
+                transform: translateY(-1px);
+            }
+            .gallery-item.selected {
+                border-color: #58a6ff;
+                box-shadow: 0 0 0 1px #58a6ff;
+            }
+            .gallery-item.base-image {
+                border-color: #3fb950;
+            }
+
+            .gallery-item-title {
+                font-size: 13px;
+                font-weight: 600;
+                word-break: break-all;
+                margin-bottom: 6px;
+                color: #f0f6fc;
+            }
+            .gallery-item-meta { font-size: 11px; color: #8b949e; line-height: 1.4; }
+
+            .image-label {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                color: #c9d1d9;
+                font-size: 13px;
+                font-weight: 600;
+                padding: 8px 12px;
+                background: #161b22;
+                border-bottom: 1px solid #30363d;
+                flex-shrink: 0;
+                user-select: none;
+                gap: 8px;
+            }
+            .image-label-text { flex: 1; color: #f0f6fc; }
+            .image-label-btns { display: flex; gap: 6px; align-items: center; }
+
+            .canvas-wrap {
+                flex: 1;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                position: relative;
+                overflow: hidden;
+                background: radial-gradient(circle at center, #1a1e23 0%, #010409 100%);
+            }
+
+            canvas {
+                max-width: 100%;
+                max-height: 100%;
+                cursor: crosshair;
+                display: block;
+                box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            }
+
+            .drawing-hint {
+                position: absolute;
+                bottom: 16px;
+                left: 50%;
+                transform: translateX(-50%);
+                text-align: center;
+                background: rgba(13, 17, 23, 0.85);
+                border: 1px solid #30363d;
+                backdrop-filter: blur(4px);
+                color: #f0f6fc;
+                font-size: 12px;
+                font-weight: 600;
+                padding: 6px 12px;
+                border-radius: 20px;
+                pointer-events: none;
+                display: none;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            }
+
+            ::-webkit-scrollbar { width: 6px; }
+            ::-webkit-scrollbar-track { background: #0d1117; }
+            ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 4px; }
+            ::-webkit-scrollbar-thumb:hover { background: #484f58; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <!-- ════════════════ LEFT PANEL ════════════════ -->
+            <div class="left-panel">
+                <h1>🧪 PVT Auto Swelling Factor</h1>
+
+                <!-- ── STEP 1: Load Images ── -->
+                <div class="step-header">1️⃣ &nbsp;LOAD IMAGES</div>
+
+                <div class="load-row">
+                    <input type="file" id="imageInput" accept="image/*" multiple />
+                    <button class="btn-primary" onclick="addGalleryImage()">
+                        ➕ Add
+                    </button>
+                </div>
+                <div id="imageStatus" class="status status-empty">
+                    No images loaded.
+                </div>
+
+                <!-- ── STEP 2: ROI ── -->
+                <div class="step-header">
+                    2️⃣ &nbsp;ROI &nbsp;<span
+                        style="font-weight: normal; font-size: 10px"
+                        >(shared · draw on either image)</span
+                    >
+                </div>
+                <p class="info-text">
+                    Click the <strong>🔲 ROI</strong> button in an image header,
+                    then drag a rectangle on that image.
+                </p>
+                <div id="roiStatus" class="status status-empty">
+                    No ROI drawn.
+                </div>
+                <button
+                    class="btn-secondary"
+                    style="margin-top: 3px; font-size: 11px"
+                    onclick="clearROI()"
+                >
+                    🗑 Clear ROI
+                </button>
+
+                <!-- ── STEP 3: Calibration ── -->
+                <div class="step-header">
+                    3️⃣ &nbsp;CALIBRATION &nbsp;<span
+                        style="font-weight: normal; font-size: 10px"
+                        >(shared)</span
+                    >
+                </div>
+
+                <!-- Prominent mm box -->
+                <div class="calib-mm-box">
+                    <span class="calib-mm-icon">📏</span>
+                    <span class="calib-mm-label"
+                        >Reference distance<br />between ▲ TOP and ▼ BOTTOM
+                        marks</span
+                    >
+                    <input
+                        type="number"
+                        id="mmInput"
+                        class="calib-mm-input"
+                        value="92.0"
+                        step="any"
+                        min="0.001"
+                    />
+                    <span class="calib-mm-unit">mm</span>
+                </div>
+
+                <button class="btn-warning" onclick="startCalibTop()">
+                    🔺 Click TOP Calibration Point
+                </button>
+                <button class="btn-warning" onclick="startCalibBottom()">
+                    🔽 Click BOTTOM Calibration Point
+                </button>
+                <p class="info-text">
+                    Click the button, then click on the
+                    <strong>image canvas</strong>.
+                </p>
+                <button
+                    class="btn-secondary"
+                    style="font-size: 11px; margin-top: 3px"
+                    onclick="copyBaseCalibration()"
+                    title="Copy calibration points from Base Image to the selected image"
+                >
+                    📋 Copy Base Calib → Current
+                </button>
+                <div id="calibStatus" class="status status-empty">
+                    Not calibrated.
+                </div>
+
+                <!-- ── STEP 4: Metadata ── -->
+                <div class="step-header">4️⃣ &nbsp;METADATA</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-items: end;">
+                    <div>
+                        <label for="metaDate" style="margin-top: 0;">Date & Time:</label>
+                        <input type="text" id="metaDate" placeholder="YYYY-MM-DD" style="margin: 2px 0;" />
+                    </div>
+                    <div>
+                        <label for="metaTimestamp" style="margin-top: 0;">Timestamp:</label>
+                        <input type="text" id="metaTimestamp" placeholder="0s" style="margin: 2px 0;" />
+                    </div>
+                    <div>
+                        <label for="metaSample" style="margin-top: 0;">Sample:</label>
+                        <input type="text" id="metaSample" placeholder="Sample name" style="margin: 2px 0;" />
+                    </div>
+                    <div>
+                        <label for="metaSolvent" style="margin-top: 0;">Solvent:</label>
+                        <input type="text" id="metaSolvent" placeholder="Solvent name" style="margin: 2px 0;" />
+                    </div>
+                    <div>
+                        <label for="metaPressure" style="margin-top: 0;">Pressure:</label>
+                        <input type="text" id="metaPressure" placeholder="1000 psi" style="margin: 2px 0;" />
+                    </div>
+                    <div>
+                        <label for="metaTemperature" style="margin-top: 0;">Temp:</label>
+                        <input type="text" id="metaTemperature" placeholder="50 °C" style="margin: 2px 0;" />
+                    </div>
+                </div>
+
+                <!-- ── STEP 5: Detection ── -->
+                <div class="step-header">5️⃣ &nbsp;DETECTION SETTINGS</div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-items: end;">
+                    <div style="grid-column: span 2;">
+                        <label for="methodSelect" style="margin-top: 0;">Detection Method:</label>
+                        <select id="methodSelect" style="margin: 2px 0;">
+                            <option value="smart" selected>smart (ultra-robust)</option>
+                            <option value="literature">literature (standard)</option>
+                            <option value="spanning">spanning</option>
+                            <option value="advanced">advanced</option>
+                            <option value="basic">basic</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="slopeInput" style="margin-top: 0;">Slope (ml/mm):</label>
+                        <input type="number" id="slopeInput" value="1.0" step="any" style="margin: 2px 0;" />
+                    </div>
+                    <div>
+                        <label for="interceptInput" style="margin-top: 0;">Intercept (ml):</label>
+                        <input type="number" id="interceptInput" value="0.0" step="any" style="margin: 2px 0;" />
+                    </div>
+                </div>
+
+                <!-- ── Run ── -->
+                <div style="margin-top: 12px">
+                    <button class="btn-run" onclick="runDetection()">
+                        ▶ &nbsp;AUTO-DETECT &amp; COMPUTE
+                    </button>
+                </div>
+
+                <div class="sep"></div>
+
+                <!-- ── STEP 6: Results ── -->
+                <div class="step-header">6️⃣ &nbsp;RESULTS</div>
+                <div id="resultStatus" class="status status-result">Ready…</div>
+
+                    <div id="resultsList">
+                        <!-- Populated dynamically -->
+                    </div>
+
+                <!-- ── Utilities ── -->
+                <div style="margin-top: auto; padding-top: 12px; display: flex; gap: 8px;">
+                    <button class="btn-util" onclick="openSessionsModal()" style="background-color: #2196F3; flex: 1;">
+                        📂 &nbsp;Load Session
+                    </button>
+                    <button class="btn-util" onclick="resetAll()" style="flex: 1;">
+                        🗑️ &nbsp;Reset All
+                    </button>
+                </div>
+            </div>
+            <!-- /left-panel -->
+
+            <!-- ════════════════ RIGHT PANEL ════════════════ -->
+            <div class="right-panel">
+                <div class="main-viewer">
+                    <div class="image-label">
+                        <span class="image-label-text" id="mainViewerTitle">📷 NO IMAGE SELECTED</span>
+                        <div class="image-label-btns" id="mainViewerBtns" style="display: none;">
+                            <button class="btn-mini" onclick="resetView()" style="background: #555;">
+                                🔍 Reset View
+                            </button>
+                            <button
+                                class="btn-mini"
+                                id="roiBtn"
+                                onclick="startDrawROI()"
+                            >
+                                🔲 ROI
+                            </button>
+                            <button
+                                class="btn-mini"
+                                id="menBtn"
+                                onclick="startFixMeniscus()"
+                                style="background: #7b1fa2"
+                            >
+                                ✏️ Meniscus
+                            </button>
+                            <button
+                                class="btn-mini"
+                                id="setBaseBtn"
+                                onclick="setAsBaseImage()"
+                                style="background: #2e7d32"
+                            >
+                                📍 Set as Base
+                            </button>
+                        </div>
+                    </div>
+                    <div class="canvas-wrap" id="wrap1">
+                        <canvas
+                            id="mainCanvas"
+                            onmousedown="onMouseDown(this, event)"
+                            onmousemove="onMouseMove(this, event)"
+                            onmouseup="onMouseUp(this, event)"
+                            onmouseleave="onMouseLeave(this, event)"
+                            onwheel="onWheel(event)"
+                        ></canvas>
+                        <div class="drawing-hint" id="mainHint"></div>
+                    </div>
+                </div>
+
+                <!-- Gallery Panel -->
+                <div class="gallery-panel" id="galleryPanel">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+            <!-- /right-panel -->
+        </div>
+        <!-- /container -->
+
+        <script>
+"use strict";
+
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+const state = {
+    images: {}, // imageId -> HTMLImageElement
+    rawImages: {}, // imageId -> original (pre-detection) HTMLImageElement
+    drawingMode: null, // 'roi'|'calibTop'|'calibBottom'|'meniscus'
+    roiStart: null, // {imgX, imgY} while dragging
+
+    points: {
+        roi: {}, // imageId -> {x1,y1,x2,y2}
+        calibTop: {}, // imageId -> {x,y}
+        calibBottom: {}, // imageId -> {x,y}
+    },
+    
+    results: {}, // imageId -> result
+
+    // Gallery
+    galleryImages: [], // array of { id, name }
+    selectedImageId: null,
+    baseImageId: null,
+    
+    // Transform (Zoom and Pan)
+    transform: { scale: 1.0, offsetX: 0, offsetY: 0 },
+    isPanning: false,
+    panStart: null // {x, y} screen coords
+};
+
+let imgCounter = 0;
+
+// ═══════════════════════════════════════════════
+// DOM REFS
+// ═══════════════════════════════════════════════
+const mainCanvas = document.getElementById("mainCanvas");
+const mainHint = document.getElementById("mainHint");
+const roiBtn = document.getElementById("roiBtn");
+const menBtn = document.getElementById("menBtn");
+const mainViewerTitle = document.getElementById("mainViewerTitle");
+const mainViewerBtns = document.getElementById("mainViewerBtns");
+const galleryPanel = document.getElementById("galleryPanel");
+const resultsList = document.getElementById("resultsList");
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+window.addEventListener("load", () => {
+    drawPlaceholder();
+});
+
+function drawPlaceholder() {
+    const wrap = mainCanvas.parentElement;
+    const w = wrap.clientWidth || 400;
+    const h = wrap.clientHeight || 300;
+    mainCanvas.width = w;
+    mainCanvas.height = h;
+    const ctx = mainCanvas.getContext("2d");
+    ctx.fillStyle = "#1a1a1a";
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = "#3a3a3a";
+    ctx.strokeRect(20, 20, w - 40, h - 40);
+    
+    ctx.fillStyle = "#555";
+    ctx.font = "14px monospace";
+    ctx.textAlign = "center";
+    ctx.fillText("Select an image from the gallery", w / 2, h / 2);
+}
+
+function setStatus(id, text, type) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = text;
+    el.className = "status status-" + type;
+}
+
+// ═══════════════════════════════════════════════
+// GALLERY & UPLOAD
+// ═══════════════════════════════════════════════
+function addGalleryImage() {
+    const input = document.getElementById("imageInput");
+    const files = Array.from(input.files);
+    if (files.length === 0) {
+        setStatus("imageStatus", "Select file(s) first.", "empty");
+        return;
+    }
+
+    setStatus("imageStatus", `Uploading ${files.length} image(s)...`, "result");
+    
+    let uploadedCount = 0;
+
+    files.forEach((file, index) => {
+        imgCounter++;
+        const imageId = "img_" + imgCounter;
+        
+        const formData = new FormData();
+        formData.append("image_id", imageId);
+        formData.append("file", file);
+
+        fetch("/api/load-image", { method: "POST", body: formData })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    setStatus("imageStatus", "❌ " + data.error, "error");
+                    return;
+                }
+                
+                const src = data.image_data.startsWith("data:") ? data.image_data : "data:image/png;base64," + data.image_data;
+                const img = new Image();
+                img.onload = () => {
+                    state.images[imageId] = img;
+                    state.rawImages[imageId] = img;
+                    
+                    state.galleryImages.push({ id: imageId, name: file.name });
+                    
+                    uploadedCount++;
+                    
+                    // If it's the first image of the batch (or first ever), and we haven't selected one yet
+                    if (state.galleryImages.length === 1) {
+                        selectImage(imageId);
+                        setAsBaseImage(imageId);
+                    }
+                    
+                    if (uploadedCount === files.length) {
+                        renderGallery();
+                        setStatus("imageStatus", `✅ Added ${files.length} images.`, "ready");
+                        input.value = "";
+                    } else {
+                        renderGallery();
+                    }
+                };
+                img.onerror = () => setStatus("imageStatus", "❌ Could not decode " + file.name, "error");
+                img.src = src;
+            })
+            .catch(err => setStatus("imageStatus", "❌ " + err.message, "error"));
+    });
+}
+
+function selectImage(imageId) {
+    state.selectedImageId = imageId;
+    cancelDrawingMode();
+    resetView(false); // Reset view but don't draw yet
+    renderGallery();
+    
+    const imgObj = state.galleryImages.find(g => g.id === imageId);
+    if (imgObj) {
+        mainViewerTitle.textContent = "📷 " + imgObj.name.toUpperCase();
+        mainViewerBtns.style.display = "flex";
+    }
+    
+    drawCanvas();
+    updateCalibStatus();
+}
+
+function renderGallery() {
+    galleryPanel.innerHTML = "";
+    
+    state.galleryImages.forEach(imgObj => {
+        const div = document.createElement("div");
+        div.className = "gallery-item";
+        if (imgObj.id === state.selectedImageId) div.classList.add("selected");
+        if (imgObj.id === state.baseImageId) div.classList.add("base-image");
+        
+        div.onclick = () => selectImage(imgObj.id);
+        
+        let html = "<div class='gallery-item-title'>" + imgObj.name + "</div>";
+        if (imgObj.id === state.baseImageId) {
+            html += "<div class='gallery-item-meta' style='color:#4caf50;'>📍 BASE IMAGE</div>";
+        }
+        
+        const res = state.results[imgObj.id];
+        if (res) {
+            html += "<div class='gallery-item-meta'>V: " + res.volume_ml + " ml</div>";
+            if (res.swelling_factor !== null && res.swelling_factor !== undefined) {
+                html += "<div class='gallery-item-meta'>SF: " + res.swelling_factor + "</div>";
+            }
+        }
+        
+        div.innerHTML = html;
+        galleryPanel.appendChild(div);
+    });
+}
+
+function setAsBaseImage(forcedId = null) {
+    const id = forcedId || state.selectedImageId;
+    if (!id) return;
+    
+    fetch("/api/set-base-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image_id: id })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) {
+            alert(data.error);
+            return;
+        }
+        state.baseImageId = id;
+        renderGallery();
+    })
+    .catch(console.error);
+}
+
+// ═══════════════════════════════════════════════
+// DRAWING
+// ═══════════════════════════════════════════════
+function drawCanvas() {
+    const id = state.selectedImageId;
+    if (!id) {
+        drawPlaceholder();
+        return;
+    }
+    const img = state.images[id];
+    if (!img) return;
+
+    const wrap = mainCanvas.parentElement;
+    let maxW = wrap.clientWidth;
+    let maxH = wrap.clientHeight;
+    if (maxW < 100) maxW = 400;
+    if (maxH < 100) maxH = 300;
+
+    const scale = Math.min(maxW / img.width, maxH / img.height);
+    const w = img.width * scale;
+    const h = img.height * scale;
+
+    mainCanvas.width = w;
+    mainCanvas.height = h;
+
+    const sX = w / img.width;
+    const sY = h / img.height;
+
+    // To use image space coordinates, we just scale by sX/sY natively.
+    // So 1 pixel in image = sX pixels in canvas (before transform).
+    // The transform scales and translates the whole canvas.
+
+    const ctx = mainCanvas.getContext("2d");
+    
+    // Clear the canvas
+    ctx.fillStyle = "#1a1a1a";
+    ctx.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
+    
+    ctx.save();
+    
+    // Apply pan and zoom
+    ctx.translate(state.transform.offsetX, state.transform.offsetY);
+    ctx.scale(state.transform.scale, state.transform.scale);
+
+    ctx.drawImage(img, 0, 0, w, h);
+
+    // ROI
+    const r = state.points.roi[id];
+    if (r) {
+        ctx.strokeStyle = "#00ff00";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([]);
+        ctx.strokeRect(r.x1 * sX, r.y1 * sY, (r.x2 - r.x1) * sX, (r.y2 - r.y1) * sY);
+    }
+
+    // CALIB
+    const ct = state.points.calibTop[id];
+    if (ct) {
+        ctx.fillStyle = "yellow";
+        ctx.beginPath();
+        ctx.arc(ct.x * sX, ct.y * sY, 5, 0, 2 * Math.PI);
+        ctx.fill();
+    }
+    const cb = state.points.calibBottom[id];
+    if (cb) {
+        ctx.fillStyle = "cyan";
+        ctx.beginPath();
+        ctx.arc(cb.x * sX, cb.y * sY, 5, 0, 2 * Math.PI);
+        ctx.fill();
+    }
+    
+    if (ct && cb) {
+        ctx.strokeStyle = "orange";
+        ctx.lineWidth = 1;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(ct.x * sX, ct.y * sY);
+        ctx.lineTo(cb.x * sX, cb.y * sY);
+        ctx.stroke();
+    }
+    
+    ctx.restore();
+}
+
+function resetView(shouldDraw = true) {
+    state.transform.scale = 1.0;
+    state.transform.offsetX = 0;
+    state.transform.offsetY = 0;
+    if (shouldDraw) drawCanvas();
+}
+
+function getImageCoords(canvas, evt) {
+    const id = state.selectedImageId;
+    const rect = canvas.getBoundingClientRect();
+    const rawX = evt.clientX - rect.left;
+    const rawY = evt.clientY - rect.top;
+    
+    // Un-apply the transform
+    const x = (rawX - state.transform.offsetX) / state.transform.scale;
+    const y = (rawY - state.transform.offsetY) / state.transform.scale;
+    
+    const img = state.images[id];
+    if (!img) return { imgX: 0, imgY: 0 };
+    const scaleX = img.width / canvas.width;
+    const scaleY = img.height / canvas.height;
+    return { imgX: x * scaleX, imgY: y * scaleY };
+}
+
+// ═══════════════════════════════════════════════
+// INTERACTIONS
+// ═══════════════════════════════════════════════
+function startDrawROI() {
+    if (!state.selectedImageId) return;
+    if (state.drawingMode === "roi") {
+        cancelDrawingMode();
+        return;
+    }
+    cancelDrawingMode();
+    state.drawingMode = "roi";
+    roiBtn.classList.add("roi-active");
+    roiBtn.textContent = "✋ Cancel";
+    showHint("Click and drag to draw ROI rectangle");
+    setStatus("roiStatus", "Drag a rectangle on the image...", "result");
+}
+
+function startCalibTop() {
+    if (!state.selectedImageId) return;
+    cancelDrawingMode();
+    state.drawingMode = "calibTop";
+    showHint("Click on TOP calibration mark");
+    setStatus("calibStatus", "Click on the TOP reference mark...", "result");
+}
+
+function startCalibBottom() {
+    if (!state.selectedImageId) return;
+    cancelDrawingMode();
+    state.drawingMode = "calibBottom";
+    showHint("Click on BOTTOM calibration mark");
+    setStatus("calibStatus", "Click on the BOTTOM reference mark...", "result");
+}
+
+function startFixMeniscus() {
+    if (!state.selectedImageId) return;
+    if (state.drawingMode === "meniscus") {
+        cancelDrawingMode();
+        return;
+    }
+    cancelDrawingMode();
+    state.drawingMode = "meniscus";
+    menBtn.classList.add("roi-active");
+    menBtn.textContent = "✋ Cancel";
+    menBtn.style.background = "#e65100";
+    showHint("Click on the actual liquid surface (meniscus)");
+    setStatus("resultStatus", "Click the meniscus to correct it.", "result");
+}
+
+function showHint(msg) {
+    mainHint.textContent = msg;
+    mainHint.style.display = "block";
+}
+function hideHint() {
+    mainHint.style.display = "none";
+}
+
+function cancelDrawingMode() {
+    state.drawingMode = null;
+    state.roiStart = null;
+    roiBtn.classList.remove("roi-active");
+    roiBtn.textContent = "🔲 ROI";
+    menBtn.classList.remove("roi-active");
+    menBtn.textContent = "✏️ Meniscus";
+    menBtn.style.background = "#7b1fa2";
+    hideHint();
+}
+
+function clearROI() {
+    const id = state.selectedImageId;
+    if (!id) return;
+    state.points.roi[id] = null;
+    setStatus("roiStatus", "ROI cleared.", "empty");
+    drawCanvas();
+    fetch("/api/set-roi", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image_id: id, clear: true }),
+    }).catch(() => {});
+}
+
+function updateCalibStatus() {
+    const id = state.selectedImageId;
+    if (!id) return;
+    const t = state.points.calibTop[id];
+    const b = state.points.calibBottom[id];
+    if (t && b) {
+        const dy = Math.abs(b.y - t.y);
+        const mm = document.getElementById("mmInput").value || 92;
+        const scale = dy > 0 ? (mm / dy).toFixed(4) : 0;
+        setStatus(
+            "calibStatus",
+            `✅ Calibrated (Δy = ${dy.toFixed(1)} px, Scale = ${scale} mm/px)`,
+            "ready"
+        );
+    } else {
+        setStatus("calibStatus", "Waiting for calibration points...", "empty");
+    }
+}
+
+function copyBaseCalibration() {
+    if (!state.baseImageId || !state.selectedImageId || state.baseImageId === state.selectedImageId) return;
+    const bId = state.baseImageId;
+    const sId = state.selectedImageId;
+    
+    if (!state.points.calibTop[bId] || !state.points.calibBottom[bId]) {
+        setStatus("calibStatus", "Base image is missing calibration.", "error");
+        return;
+    }
+    
+    state.points.calibTop[sId] = { ...state.points.calibTop[bId] };
+    state.points.calibBottom[sId] = { ...state.points.calibBottom[bId] };
+    const mm = document.getElementById("mmInput").value || 92;
+    
+    // Server sync
+    fetch("/api/set-calib-top", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image_id: sId, ...state.points.calibTop[sId] }),
+    })
+    .then(() => {
+        return fetch("/api/set-calib-bottom", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ image_id: sId, ...state.points.calibBottom[sId], mm }),
+        });
+    })
+    .then(() => {
+        drawCanvas();
+        updateCalibStatus();
+    })
+    .catch(console.error);
+}
+
+// ═══════════════════════════════════════════════
+// MOUSE EVENTS
+// ═══════════════════════════════════════════════
+
+function onWheel(evt) {
+    if (!state.selectedImageId) return;
+    evt.preventDefault();
+    
+    const rect = mainCanvas.getBoundingClientRect();
+    const mouseX = evt.clientX - rect.left;
+    const mouseY = evt.clientY - rect.top;
+    
+    // Calculate current image space coordinate of the mouse
+    const imgCoords = getImageCoords(mainCanvas, evt);
+    const img = state.images[state.selectedImageId];
+    if (!img) return;
+    
+    const sX = mainCanvas.width / img.width;
+    const sY = mainCanvas.height / img.height;
+    
+    const nativeX = imgCoords.imgX * sX;
+    const nativeY = imgCoords.imgY * sY;
+    
+    const zoomIntensity = 0.1;
+    const wheel = evt.deltaY < 0 ? 1 : -1;
+    const zoomFactor = Math.exp(wheel * zoomIntensity);
+    
+    state.transform.scale *= zoomFactor;
+    
+    if (state.transform.scale < 0.2) state.transform.scale = 0.2;
+    if (state.transform.scale > 50.0) state.transform.scale = 50.0;
+    
+    state.transform.offsetX = mouseX - nativeX * state.transform.scale;
+    state.transform.offsetY = mouseY - nativeY * state.transform.scale;
+    
+    drawCanvas();
+}
+
+function onMouseDown(canvas, evt) {
+    const id = state.selectedImageId;
+    if (!id) return;
+    
+    if (!state.drawingMode) {
+        state.isPanning = true;
+        state.panStart = { x: evt.clientX, y: evt.clientY, offsetX: state.transform.offsetX, offsetY: state.transform.offsetY };
+        return;
+    }
+    
+    evt.preventDefault();
+
+    const { imgX, imgY } = getImageCoords(canvas, evt);
+
+    if (state.drawingMode === "roi") {
+        state.roiStart = { imgX, imgY };
+    } else if (state.drawingMode === "meniscus") {
+        cancelDrawingMode();
+        applyManualMeniscus(id, imgY);
+    } else if (state.drawingMode === "calibTop") {
+        state.points.calibTop[id] = { x: imgX, y: imgY };
+        cancelDrawingMode();
+        fetch("/api/set-calib-top", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ image_id: id, x: imgX, y: imgY }),
+        }).catch(() => {});
+        updateCalibStatus();
+        drawCanvas();
+    } else if (state.drawingMode === "calibBottom") {
+        state.points.calibBottom[id] = { x: imgX, y: imgY };
+        cancelDrawingMode();
+        const mm = document.getElementById("mmInput").value;
+        fetch("/api/set-calib-bottom", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ image_id: id, x: imgX, y: imgY, mm }),
+        }).catch(() => {});
+        updateCalibStatus();
+        drawCanvas();
+    }
+}
+
+function onMouseMove(canvas, evt) {
+    const id = state.selectedImageId;
+    if (!id) return;
+    
+    if (state.isPanning && state.panStart) {
+        state.transform.offsetX = state.panStart.offsetX + (evt.clientX - state.panStart.x);
+        state.transform.offsetY = state.panStart.offsetY + (evt.clientY - state.panStart.y);
+        drawCanvas();
+        return;
+    }
+    
+    if (state.drawingMode !== "roi" || !state.roiStart) return;
+    evt.preventDefault();
+
+    const { imgX, imgY } = getImageCoords(canvas, evt);
+
+    drawCanvas(); // base
+    const img = state.images[id];
+    const ctx = canvas.getContext("2d");
+    const sX = canvas.width / img.width;
+    const sY = canvas.height / img.height;
+
+    ctx.save();
+    ctx.translate(state.transform.offsetX, state.transform.offsetY);
+    ctx.scale(state.transform.scale, state.transform.scale);
+    
+    ctx.strokeStyle = "rgba(255, 140, 0, 0.9)";
+    ctx.lineWidth = 2 / state.transform.scale;
+    ctx.setLineDash([6 / state.transform.scale, 3 / state.transform.scale]);
+    ctx.strokeRect(
+        state.roiStart.imgX * sX,
+        state.roiStart.imgY * sY,
+        (imgX - state.roiStart.imgX) * sX,
+        (imgY - state.roiStart.imgY) * sY
+    );
+    ctx.restore();
+}
+
+function onMouseUp(canvas, evt) {
+    const id = state.selectedImageId;
+    if (!id) return;
+    
+    if (state.isPanning) {
+        state.isPanning = false;
+        return;
+    }
+    
+    if (state.drawingMode !== "roi" || !state.roiStart) return;
+    evt.preventDefault();
+
+    const { imgX, imgY } = getImageCoords(canvas, evt);
+    const x1 = Math.round(Math.min(state.roiStart.imgX, imgX));
+    const y1 = Math.round(Math.min(state.roiStart.imgY, imgY));
+    const x2 = Math.round(Math.max(state.roiStart.imgX, imgX));
+    const y2 = Math.round(Math.max(state.roiStart.imgY, imgY));
+
+    cancelDrawingMode();
+
+    if (Math.abs(x2 - x1) < 5 || Math.abs(y2 - y1) < 5) {
+        setStatus("roiStatus", "ROI too small.", "empty");
+        drawCanvas();
+        return;
+    }
+
+    state.points.roi[id] = { x1, y1, x2, y2 };
+
+    fetch("/api/set-roi", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image_id: id, x1, y1, x2, y2 }),
+    }).catch(() => {});
+
+    setStatus("roiStatus", `✅ ROI set`, "ready");
+    drawCanvas();
+}
+
+function onMouseLeave(canvas, evt) {
+    if (state.isPanning) {
+        state.isPanning = false;
+    }
+    if (state.drawingMode === "roi" && state.roiStart) {
+        cancelDrawingMode();
+        drawCanvas();
+        setStatus("roiStatus", "ROI cancelled.", "empty");
+    }
+}
+
+// ═══════════════════════════════════════════════
+// DETECTION
+// ═══════════════════════════════════════════════
+function runDetection() {
+    const id = state.selectedImageId;
+    if (!id) {
+        setStatus("resultStatus", "❌ Select an image first.", "error");
+        return;
+    }
+    
+    if (!state.points.calibTop[id] || !state.points.calibBottom[id]) {
+        setStatus("resultStatus", "❌ Set both TOP and BOTTOM calibration points.", "error");
+        return;
+    }
+
+    const method = document.getElementById("methodSelect").value;
+    const slope = parseFloat(document.getElementById("slopeInput").value) || 1.0;
+    const intercept = parseFloat(document.getElementById("interceptInput").value) || 0.0;
+    const mm = parseFloat(document.getElementById("mmInput").value) || 92.0;
+
+    const meta = {
+        date_time: document.getElementById("metaDate").value,
+        timestamp: document.getElementById("metaTimestamp").value,
+        sample: document.getElementById("metaSample").value,
+        solvent: document.getElementById("metaSolvent").value,
+        system_pressure: document.getElementById("metaPressure").value,
+        system_temperature: document.getElementById("metaTemperature").value
+    };
+
+    setStatus("resultStatus", "⏳ Running detection...", "result");
+
+    fetch("/api/detect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image_id: id, method, slope, intercept, mm, ...meta }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) {
+            setStatus("resultStatus", "❌ " + data.error, "error");
+            return;
+        }
+
+        const res = data.result;
+        state.results[id] = res;
+
+        // Replace canvas image with annotated version
+        if (res.image_data) {
+            const src = res.image_data.startsWith("data:") ? res.image_data : "data:image/png;base64," + res.image_data;
+            const img = new Image();
+            img.onload = () => {
+                state.images[id] = img;
+                drawCanvas();
+            };
+            img.src = src;
+        }
+
+        renderGallery();
+        updateResultsList();
+
+        setStatus("resultStatus", `✅ Detection complete.
+H = ${res.height_mm} mm, V = ${res.volume_ml} ml`, "ready");
+    })
+    .catch(err => {
+        setStatus("resultStatus", "❌ " + err.message, "error");
+    });
+}
+
+function applyManualMeniscus(id, imgY) {
+    const method = document.getElementById("methodSelect").value;
+    const slope = parseFloat(document.getElementById("slopeInput").value) || 1.0;
+    const intercept = parseFloat(document.getElementById("interceptInput").value) || 0.0;
+    
+    const meta = {
+        date_time: document.getElementById("metaDate").value,
+        timestamp: document.getElementById("metaTimestamp").value,
+        sample: document.getElementById("metaSample").value,
+        solvent: document.getElementById("metaSolvent").value,
+        system_pressure: document.getElementById("metaPressure").value,
+        system_temperature: document.getElementById("metaTemperature").value
+    };
+
+    setStatus("resultStatus", "⏳ Correcting meniscus...", "result");
+
+    fetch("/api/set-meniscus", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image_id: id, y: imgY, slope, intercept, ...meta }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) {
+            setStatus("resultStatus", "❌ " + data.error, "error");
+            return;
+        }
+        
+        const res = data.result;
+        state.results[id] = res;
+
+        if (res.image_data) {
+            const src = res.image_data.startsWith("data:") ? res.image_data : "data:image/png;base64," + res.image_data;
+            const img = new Image();
+            img.onload = () => {
+                state.images[id] = img;
+                drawCanvas();
+            };
+            img.src = src;
+        }
+        
+        renderGallery();
+        updateResultsList();
+        
+        setStatus("resultStatus", `✅ Meniscus corrected.
+H = ${res.height_mm} mm, V = ${res.volume_ml} ml`, "ready");
+    })
+    .catch(err => setStatus("resultStatus", "❌ " + err.message, "error"));
+}
+
+function updateResultsList() {
+    resultsList.innerHTML = "";
+    
+    // Show base image result first if available
+    if (state.baseImageId && state.results[state.baseImageId]) {
+        const res = state.results[state.baseImageId];
+        const baseName = state.galleryImages.find(i => i.id === state.baseImageId)?.name || "Base";
+        let diagHTML = "";
+        if (res.diagnostics && res.diagnostics.subpixel_y !== undefined) {
+            const d = res.diagnostics;
+            let fitStr = "";
+            if (d.coeffs && d.coeffs.length === 3) {
+                fitStr = `<br/>Fit: a=${d.coeffs[0].toExponential(2)}, b=${d.coeffs[1].toFixed(2)}`;
+            }
+            diagHTML = `
+            <div style="font-size: 10px; margin-top: 6px; padding: 6px; background: #222; border-radius: 4px; color: #aaa; border: 1px solid #444;">
+                <strong style="color:#ddd">🔬 Diagnostics</strong><br/>
+                Raw Y: ${d.detected_y !== undefined ? d.detected_y.toFixed(2) : 'N/A'}<br/>
+                Subpixel Y: <span style="color:#0f0">${d.subpixel_y !== undefined ? d.subpixel_y.toFixed(2) : 'N/A'}</span>
+                ${fitStr}
+            </div>
+            `;
+        }
+
+        const div = document.createElement("div");
+        div.className = "results-card";
+        div.innerHTML = `
+            <div class="result-row">
+                <span class="result-slot" style="color:#28a745">📍 BASE (${baseName})</span>
+                <span class="result-vals">H: ${res.height_mm} mm<br/>V: ${res.volume_ml} ml</span>
+            </div>
+            ${res.roi_filename ? `<img src="/api/result-image/${res.roi_filename}?t=${Date.now()}" style="width:100%; margin-top:5px; border-radius:4px;">` : ""}
+            ${diagHTML}
+        `;
+        resultsList.appendChild(div);
+    }
+    
+    // List others
+    state.galleryImages.forEach(imgObj => {
+        if (imgObj.id === state.baseImageId) return;
+        const res = state.results[imgObj.id];
+        if (!res) return;
+        
+        let diagHTML = "";
+        if (res.diagnostics && res.diagnostics.subpixel_y !== undefined) {
+            const d = res.diagnostics;
+            let fitStr = "";
+            if (d.coeffs && d.coeffs.length === 3) {
+                fitStr = `<br/>Fit: a=${d.coeffs[0].toExponential(2)}, b=${d.coeffs[1].toFixed(2)}`;
+            }
+            diagHTML = `
+            <div style="font-size: 10px; margin-top: 6px; padding: 6px; background: #222; border-radius: 4px; color: #aaa; border: 1px solid #444;">
+                <strong style="color:#ddd">🔬 Diagnostics</strong><br/>
+                Raw Y: ${d.detected_y !== undefined ? d.detected_y.toFixed(2) : 'N/A'}<br/>
+                Subpixel Y: <span style="color:#0f0">${d.subpixel_y !== undefined ? d.subpixel_y.toFixed(2) : 'N/A'}</span>
+                ${fitStr}
+            </div>
+            `;
+        }
+        
+        const div = document.createElement("div");
+        div.className = "results-card";
+        div.innerHTML = `
+            <div class="result-row">
+                <span class="result-slot">📷 ${imgObj.name}</span>
+                <span class="result-vals">H: ${res.height_mm} mm<br/>V: ${res.volume_ml} ml</span>
+            </div>
+            ${res.roi_filename ? `<img src="/api/result-image/${res.roi_filename}?t=${Date.now()}" style="width:100%; margin-top:5px; border-radius:4px;">` : ""}
+            ${res.swelling_factor ? `<div class="swelling-box">🧮 SF = ${res.swelling_factor}</div>` : ""}
+            ${diagHTML}
+        `;
+        resultsList.appendChild(div);
+    });
+}
+
+function resetAll() {
+    fetch("/api/reset", { method: "POST" }).catch(() => {});
+    
+    state.images = {};
+    state.rawImages = {};
+    state.drawingMode = null;
+    state.roiStart = null;
+    state.points = { roi: {}, calibTop: {}, calibBottom: {} };
+    state.results = {};
+    state.galleryImages = [];
+    state.selectedImageId = null;
+    state.baseImageId = null;
+    imgCounter = 0;
+    
+    document.getElementById("imageInput").value = "";
+    setStatus("imageStatus", "No images loaded.", "empty");
+    setStatus("roiStatus", "No ROI drawn.", "empty");
+    setStatus("calibStatus", "Not calibrated.", "empty");
+    setStatus("resultStatus", "Ready...", "result");
+    
+    mainViewerTitle.textContent = "📷 NO IMAGE SELECTED";
+    mainViewerBtns.style.display = "none";
+    
+    renderGallery();
+    resultsList.innerHTML = "";
+    
+    document.getElementById("metaDate").value = "";
+    document.getElementById("metaTimestamp").value = "";
+    document.getElementById("metaSample").value = "";
+    document.getElementById("metaSolvent").value = "";
+    document.getElementById("metaPressure").value = "";
+    document.getElementById("metaTemperature").value = "";
+    
+    roiBtn.classList.remove("roi-active");
+    roiBtn.textContent = "🔲 ROI";
+    menBtn.classList.remove("roi-active");
+    menBtn.textContent = "✏️ Meniscus";
+    menBtn.style.background = "#7b1fa2";
+    hideHint();
+    
+    drawPlaceholder();
+}
+
+let _rt = null;
+window.addEventListener("resize", () => {
+    clearTimeout(_rt);
+    _rt = setTimeout(() => {
+        drawCanvas();
+    }, 100);
+});
+
+</script>
+
+    <!-- Sessions Modal -->
+    <div id="sessionsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center;">
+        <div style="background: #2a2a2a; width: 500px; max-height: 80vh; border-radius: 8px; display: flex; flex-direction: column; overflow: hidden;">
+            <div style="padding: 16px; background: #333; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #444;">
+                <h3 style="margin: 0;">📂 Load Previous Session</h3>
+                <button onclick="closeSessionsModal()" style="background: none; border: none; color: #aaa; cursor: pointer; font-size: 18px;">&times;</button>
+            </div>
+            <div id="sessionsList" style="padding: 16px; overflow-y: auto; flex: 1;">
+                Loading...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openSessionsModal() {
+            document.getElementById("sessionsModal").style.display = "flex";
+            document.getElementById("sessionsList").innerHTML = "Loading...";
+            
+            fetch("/api/saved-results")
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success || data.results.length === 0) {
+                        document.getElementById("sessionsList").innerHTML = "<p>No saved sessions found.</p>";
+                        return;
+                    }
+                    
+                    let html = `<div style="display: flex; flex-direction: column; gap: 8px;">`;
+                    data.results.forEach(res => {
+                        html += `
+                        <div style="background: #333; padding: 12px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong style="color: #4CAF50;">${res.image_id}</strong>
+                                <div style="font-size: 11px; color: #aaa; margin-top: 4px;">
+                                    Date: ${res.date}<br/>
+                                    Sample: ${res.sample}<br/>
+                                    V: ${res.volume} ml | H: ${res.height} mm
+                                </div>
+                            </div>
+                            <button class="btn-secondary" style="font-size: 12px; padding: 6px 12px;" onclick="loadSession('${res.image_id}')">Load</button>
+                        </div>
+                        `;
+                    });
+                    html += `</div>`;
+                    document.getElementById("sessionsList").innerHTML = html;
+                })
+                .catch(err => {
+                    document.getElementById("sessionsList").innerHTML = `<p style="color:red">Error loading sessions: ${err.message}</p>`;
+                });
+        }
+
+        function closeSessionsModal() {
+            document.getElementById("sessionsModal").style.display = "none";
+        }
+
+        function loadSession(imageId) {
+            closeSessionsModal();
+            setStatus("resultStatus", "⏳ Loading session...", "result");
+            
+            fetch(`/api/load-result/${imageId}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.error) throw new Error(data.error);
+                    
+                    const m = data.measurements;
+                    const meta = data.metadata;
+                    
+                    // Populate state
+                    state.metadata[imageId] = meta;
+                    state.results[imageId] = m;
+                    state.rois[imageId] = m.roi;
+                    state.calib_top[imageId] = m.calib_top;
+                    state.calib_bottom[imageId] = m.calib_bottom;
+                    
+                    // Add to gallery if not present
+                    if (!state.galleryImages.find(i => i.id === imageId)) {
+                        state.galleryImages.push({
+                            id: imageId,
+                            name: imageId,
+                            file: null // No raw file since it's loaded
+                        });
+                    }
+                    
+                    // Try to load the corrected image for canvas view
+                    if (m.roi_filename) {
+                        const img = new Image();
+                        img.onload = () => {
+                            state.images[imageId] = img;
+                            selectImage(imageId);
+                        };
+                        img.src = `/api/result-image/${m.roi_filename}?t=${Date.now()}`;
+                    } else {
+                        selectImage(imageId);
+                    }
+                    
+                    renderGallery();
+                    updateResultsList();
+                    
+                    setStatus("resultStatus", `✅ Session loaded.
+H = ${m.height_mm} mm, V = ${m.volume_ml} ml`, "ready");
+                })
+                .catch(err => {
+                    setStatus("resultStatus", "❌ Failed to load: " + err.message, "error");
+                });
+        }
+    </script>
+    </body>
+</html>

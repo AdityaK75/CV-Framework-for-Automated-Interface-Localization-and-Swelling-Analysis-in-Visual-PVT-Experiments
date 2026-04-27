@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+.DS_Store
+
+# Do not track uploaded files or local results, but track the folders if needed
+upload/*
+!upload/.gitkeep
+results/*
+!results/.gitkeep
