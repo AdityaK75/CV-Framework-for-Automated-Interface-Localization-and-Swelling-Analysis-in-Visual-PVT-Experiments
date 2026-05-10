@@ -1,6 +1,7 @@
 __author__ = "Aditya Kanagalekar"
 
 import base64
+import csv
 import logging
 import os
 from io import BytesIO
@@ -107,6 +108,34 @@ def image_to_base64(img_bgr: np.ndarray) -> str:
     pil_img.save(buf, format="PNG")
     buf.seek(0)
     return base64.b64encode(buf.getvalue()).decode()
+
+def append_result_to_csv(image_id, metadata, result):
+    """Appends the result to a central CSV file for easy validation."""
+    csv_path = os.path.join("results", "summary_report.csv")
+    file_exists = os.path.isfile(csv_path)
+    
+    with open(csv_path, mode='a', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        if not file_exists:
+            writer.writerow([
+                "Image ID", "Date", "Timestamp", "Sample", "Solvent", 
+                "System Pressure", "System Temperature", 
+                "Meniscus Y (px)", "Height (mm)", "Volume (ml)", "Swelling Factor"
+            ])
+            
+        writer.writerow([
+            image_id,
+            metadata.get("date_time", ""),
+            metadata.get("timestamp", ""),
+            metadata.get("sample", ""),
+            metadata.get("solvent", ""),
+            metadata.get("system_pressure", ""),
+            metadata.get("system_temperature", ""),
+            result.get("meniscus_y", ""),
+            result.get("height_mm", ""),
+            result.get("volume_ml", ""),
+            result.get("swelling_factor", "") if result.get("swelling_factor") is not None else ""
+        ])
 
 
 def detect_meniscus_smart(img_bgr, roi_rect, calib_top_y, calib_bot_y):
@@ -656,6 +685,10 @@ def api_detect():
             json.dump(result_data, f, indent=2)
 
         state["results"][image_id] = result_data
+        
+        # Append to central CSV report
+        append_result_to_csv(image_id, state["metadata"][image_id], result_data)
+
         # Add image data for frontend
         state["results"][image_id]["image_data"] = image_to_base64(annotated)
 
@@ -828,6 +861,10 @@ def api_set_meniscus():
         json.dump(result_data, f, indent=2)
 
     state["results"][image_id] = result_data
+    
+    # Append to central CSV report
+    append_result_to_csv(image_id, state["metadata"][image_id], result_data)
+
     state["results"][image_id]["image_data"] = image_to_base64(annotated)
 
     return jsonify(
