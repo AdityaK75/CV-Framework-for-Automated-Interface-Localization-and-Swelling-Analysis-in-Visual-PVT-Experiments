@@ -10,6 +10,7 @@ from flask import Flask, jsonify, render_template, request, send_from_directory
 from PIL import Image
 
 from pvt_analyzer import PVTAnalyzer
+from vision_engine import detect_spherical_reactor, detect_meniscus, calculate_volume
 
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 
@@ -421,16 +422,22 @@ def api_detect():
     if image_id not in state["images"]:
         return jsonify({"error": f"Image {image_id} not loaded"}), 400
 
-    ct = state["calib_top"].get(image_id)
-    cb = state["calib_bottom"].get(image_id)
-    if ct is None or cb is None:
-        return jsonify(
-            {"error": f"Set both TOP and BOTTOM calibration points for {image_id} first"}
-        ), 400
-    if abs(cb[1] - ct[1]) == 0:
-        return jsonify(
-            {"error": f"Top and bottom calibration points for {image_id} are at the same Y position"}
-        ), 400
+    geometry = data.get("geometry", "tubular")
+
+    if geometry == "tubular":
+        ct = state["calib_top"].get(image_id)
+        cb = state["calib_bottom"].get(image_id)
+        if ct is None or cb is None:
+            return jsonify(
+                {"error": f"Set both TOP and BOTTOM calibration points for {image_id} first"}
+            ), 400
+        if abs(cb[1] - ct[1]) == 0:
+            return jsonify(
+                {"error": f"Top and bottom calibration points for {image_id} are at the same Y position"}
+            ), 400
+    else:
+        ct = None
+        cb = None
 
     method = data.get("method", "literature")
     
@@ -449,74 +456,107 @@ def api_detect():
         img_path = state["paths"][image_id]
         roi_slot = state["rois"].get(image_id)
 
-        mm = state["mm_distance"].get(image_id, 92.0)
-        calib_top_y = ct[1]
-        calib_bot_y = cb[1]
-        dy = abs(calib_bot_y - calib_top_y)
-        scale = mm / dy
-        valid_lo = min(calib_top_y, calib_bot_y)
-        valid_hi = max(calib_top_y, calib_bot_y)
+        if geometry == "spherical":
+            try:
+                physical_diameter = float(data.get("physical_diameter", 50.0))
+            except (TypeError, ValueError):
+                physical_diameter = 50.0
 
-        # a. Run detection based on selected method
-        method = data.get("method", "smart")
-        if method == "smart":
-            meniscus_y = float(detect_meniscus_smart(img, roi_slot, calib_top_y, calib_bot_y))
-        else:
-            # Fallback to legacy PVTAnalyzer methods
-            an = make_analyzer(image_id)
-            if method == "spanning":
-                y, _ = an.find_meniscus_spanning(img)
-            elif method == "advanced":
-                y, _ = an.find_meniscus_advanced(img)
-            elif method == "basic":
-                y, _ = an.find_meniscus_basic(img)
-            else: # literature
-                y, _ = an.find_meniscus_literature(img)
+            sphere_res = detect_spherical_reactor(img_path, is_base64=False)
+            if not sphere_res["success"]:
+                raise Exception("Could not detect spherical reactor boundary.")
             
-            if y is None:
-                # If legacy fails, use smart as safe fallback
+            cx, cy, r_px = sphere_res["cx"], sphere_res["cy"], sphere_res["r_px"]
+
+            men_res = detect_meniscus(img_path, cx, cy, r_px, is_base64=False)
+            if not men_res["success"]:
+                y_meniscus = cy + r_px
+            else:
+                y_meniscus = men_res["y_meniscus"]
+
+            vol_res = calculate_volume(r_px, cy, y_meniscus, physical_diameter)
+
+            meniscus_y = float(y_meniscus)
+            height_mm = vol_res["h_mm"]
+            volume_ml = vol_res["volume_ml"]
+            diagnostics = {"detected_y": meniscus_y, "subpixel_y": meniscus_y, "cx": cx, "cy": cy, "r_px": r_px}
+            
+            # Pre-draw the spherical boundary so annotate_image captures it
+            img_to_annotate = img.copy()
+            cv2.circle(img_to_annotate, (cx, cy), r_px, (0, 255, 0), 2)
+            cv2.circle(img_to_annotate, (cx, cy), 2, (0, 0, 255), 3)
+
+        else:
+            mm = state["mm_distance"].get(image_id, 92.0)
+            calib_top_y = ct[1]
+            calib_bot_y = cb[1]
+            dy = abs(calib_bot_y - calib_top_y)
+            scale = mm / dy
+            valid_lo = min(calib_top_y, calib_bot_y)
+            valid_hi = max(calib_top_y, calib_bot_y)
+
+            # a. Run detection based on selected method
+            method = data.get("method", "smart")
+            if method == "smart":
                 meniscus_y = float(detect_meniscus_smart(img, roi_slot, calib_top_y, calib_bot_y))
             else:
-                meniscus_y = float(y)
+                # Fallback to legacy PVTAnalyzer methods
+                an = make_analyzer(image_id)
+                if method == "spanning":
+                    y, _ = an.find_meniscus_spanning(img)
+                elif method == "advanced":
+                    y, _ = an.find_meniscus_advanced(img)
+                elif method == "basic":
+                    y, _ = an.find_meniscus_basic(img)
+                else: # literature
+                    y, _ = an.find_meniscus_literature(img)
+                
+                if y is None:
+                    # If legacy fails, use smart as safe fallback
+                    meniscus_y = float(detect_meniscus_smart(img, roi_slot, calib_top_y, calib_bot_y))
+                else:
+                    meniscus_y = float(y)
 
-        # b. PVT analyzer edge shape/contour extraction
-        diagnostics = {"detected_y": meniscus_y, "subpixel_y": meniscus_y}
-        try:
-            an = make_analyzer(image_id)
-            # Find the true contour near the accurately detected Y height (allow fragmented edges down to 10% width)
-            contour_orig = an.find_meniscus_contour(img, meniscus_y, span_pct=0.10)
+            # b. PVT analyzer edge shape/contour extraction
+            diagnostics = {"detected_y": meniscus_y, "subpixel_y": meniscus_y}
+            try:
+                an = make_analyzer(image_id)
+                # Find the true contour near the accurately detected Y height (allow fragmented edges down to 10% width)
+                contour_orig = an.find_meniscus_contour(img, meniscus_y, span_pct=0.10)
+                
+                if contour_orig is not None and len(contour_orig) >= 3:
+                    pts = []
+                    xs = []
+                    ys = []
+                    for pt in contour_orig:
+                        x_val = float(pt[0][0])
+                        y_val = float(pt[0][1])
+                        pts.append({"x": x_val, "y": y_val})
+                        xs.append(x_val)
+                        ys.append(y_val)
+                    diagnostics["contour"] = pts
+                    try:
+                        unique_xs, indices = np.unique(xs, return_index=True)
+                        unique_ys = np.array(ys)[indices]
+                        if len(unique_xs) >= 3:
+                            spatial_coeffs = np.polyfit(unique_xs, unique_ys, 2).tolist()
+                            diagnostics["spatial_coeffs"] = spatial_coeffs
+                    except Exception as e:
+                        logging.warning(f"Spatial polynomial fit failed: {e}")
+            except Exception as pvt_exc:
+                logging.warning("PVTAnalyzer contour extraction failed for %s: %s", image_id, pvt_exc)
+
+            # d-g. Measurements
+            height_px = max(0, calib_bot_y - meniscus_y)
+            height_mm = height_px * scale
+            v_measured = slope * height_mm + intercept
+            volume_ml = 14.81 - v_measured
             
-            if contour_orig is not None and len(contour_orig) >= 3:
-                pts = []
-                xs = []
-                ys = []
-                for pt in contour_orig:
-                    x_val = float(pt[0][0])
-                    y_val = float(pt[0][1])
-                    pts.append({"x": x_val, "y": y_val})
-                    xs.append(x_val)
-                    ys.append(y_val)
-                diagnostics["contour"] = pts
-                try:
-                    unique_xs, indices = np.unique(xs, return_index=True)
-                    unique_ys = np.array(ys)[indices]
-                    if len(unique_xs) >= 3:
-                        spatial_coeffs = np.polyfit(unique_xs, unique_ys, 2).tolist()
-                        diagnostics["spatial_coeffs"] = spatial_coeffs
-                except Exception as e:
-                    logging.warning(f"Spatial polynomial fit failed: {e}")
-        except Exception as pvt_exc:
-            logging.warning("PVTAnalyzer contour extraction failed for %s: %s", image_id, pvt_exc)
-
-        # d-g. Measurements
-        height_px = max(0, calib_bot_y - meniscus_y)
-        height_mm = height_px * scale
-        v_measured = slope * height_mm + intercept
-        volume_ml = 14.81 - v_measured
+            img_to_annotate = img
 
         # h. Annotate
         annotated = annotate_image(
-            img,
+            img_to_annotate,
             meniscus_y,
             roi_slot,
             ct,

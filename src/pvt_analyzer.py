@@ -1587,3 +1587,219 @@ if __name__ == "__main__":
         for r in results:
             writer.writerow(r)
     logging.info("Wrote summary CSV to %s", csv_path)
+
+def extract_metadata(data):
+    """Extract metadata from request JSON."""
+    return {
+        "date_time": data.get("date_time", ""),
+        "timestamp": data.get("timestamp", ""),
+        "sample": data.get("sample", ""),
+        "solvent": data.get("solvent", ""),
+        "system_pressure": data.get("system_pressure", ""),
+        "system_temperature": data.get("system_temperature", ""),
+    }
+
+def create_metadata_header(metadata, height_mm, volume_ml, width):
+    """Create a styled, professional header image with metadata text."""
+    header_width = max(width, 900)
+    height = 200
+    
+    # Dark gray background
+    header = np.ones((height, header_width, 3), dtype=np.uint8) * 30
+    
+    # Bottom accent line (Cyan)
+    cv2.line(header, (0, height-2), (header_width, height-2), (255, 200, 0), 4)
+    
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    
+    # Title
+    cv2.putText(header, "PVT SWELLING ANALYSIS REPORT", (30, 40), font, 0.9, (255, 255, 255), 2, cv2.LINE_AA)
+    
+    # Meta layout columns
+    col1_x = 30
+    col2_x = 350
+    col3_x = 600
+    
+    y_start = 90
+    y_step = 35
+    
+    # Column 1
+    cv2.putText(header, f"Sample: {metadata.get('sample', 'N/A')}", (col1_x, y_start), font, 0.7, (200, 200, 200), 1, cv2.LINE_AA)
+    cv2.putText(header, f"Solvent: {metadata.get('solvent', 'N/A')}", (col1_x, y_start + y_step), font, 0.7, (200, 200, 200), 1, cv2.LINE_AA)
+    cv2.putText(header, f"Date: {metadata.get('date_time', 'N/A')}", (col1_x, y_start + 2*y_step), font, 0.7, (200, 200, 200), 1, cv2.LINE_AA)
+    
+    # Column 2
+    cv2.putText(header, f"Timestamp: {metadata.get('timestamp', '0')}h", (col2_x, y_start), font, 0.7, (200, 200, 200), 1, cv2.LINE_AA)
+    cv2.putText(header, f"Pressure: {metadata.get('system_pressure', 'N/A')}", (col2_x, y_start + y_step), font, 0.7, (200, 200, 200), 1, cv2.LINE_AA)
+    cv2.putText(header, f"Temp: {metadata.get('system_temperature', 'N/A')}", (col2_x, y_start + 2*y_step), font, 0.7, (200, 200, 200), 1, cv2.LINE_AA)
+    
+    # Column 3 (Results Highlight Box)
+    cv2.rectangle(header, (col3_x - 15, y_start - 30), (header_width - 20, height - 20), (45, 45, 45), -1)
+    cv2.rectangle(header, (col3_x - 15, y_start - 30), (header_width - 20, height - 20), (100, 100, 100), 1)
+    
+    cv2.putText(header, "MEASUREMENTS", (col3_x, y_start - 5), font, 0.6, (255, 255, 255), 1, cv2.LINE_AA)
+    
+    h_str = f"Height : {height_mm:.2f} mm" if height_mm is not None else "Height : ---"
+    v_str = f"Volume : {volume_ml:.2f} ml" if volume_ml is not None else "Volume : ---"
+    
+    cv2.putText(header, h_str, (col3_x, y_start + y_step), font, 0.8, (0, 255, 128), 2, cv2.LINE_AA)
+    cv2.putText(header, v_str, (col3_x, y_start + 2*y_step + 5), font, 0.8, (100, 200, 255), 2, cv2.LINE_AA)
+    
+    return header, header_width
+
+def detect_meniscus_smart(img_bgr, roi_rect, calib_top_y, calib_bot_y):
+    """Sight-glass optimised meniscus detection. Constrains search to the
+    calibration band, then looks for the dark->bright transition
+    (gas above, liquid below)."""
+
+    # 1. Crop to roi_rect if provided
+    if roi_rect is not None:
+        x1, y1, x2, y2 = roi_rect
+        offset_y = y1
+        roi = img_bgr[y1:y2, x1:x2]
+    else:
+        offset_y = 0
+        roi = img_bgr.copy()
+
+    roi_h = roi.shape[0]
+
+    # 2. Restrict vertical search to calibration band, clamped to [0, roi_h)
+    search_top = max(0, min(roi_h, calib_top_y - offset_y))
+    search_bot = max(0, min(roi_h, calib_bot_y - offset_y))
+
+    # Add a 5% margin to exclude the static top/bottom edges of the glass window
+    margin = int(0.05 * (search_bot - search_top))
+    if search_bot - search_top > 40:
+        search_top += margin
+        search_bot -= margin
+
+    # 3. Fallback to full crop if range is degenerate
+    if search_top >= search_bot:
+        search_top = 0
+        search_bot = roi_h
+
+    # 4. Extract search band
+    band = roi[search_top:search_bot, :]
+    band_h = band.shape[0]
+
+    # 5. Grayscale -> bilateralFilter -> CLAHE
+    gray = cv2.cvtColor(band, cv2.COLOR_BGR2GRAY)
+    filtered = cv2.bilateralFilter(gray, d=9, sigmaColor=75, sigmaSpace=75)
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    enhanced = clahe.apply(filtered)
+
+    # 6. Absolute Sobel-Y to find strong horizontal edges (liquid/gas interface)
+    enhanced_f64 = enhanced.astype(np.float64)
+    sob = cv2.Sobel(enhanced_f64, cv2.CV_64F, 0, 1, ksize=5)
+    pos = np.absolute(sob)
+    row_pos = pos.sum(axis=1)
+
+    # 7. Smooth row_pos with a Gaussian kernel (odd size)
+    ks = max(7, band_h // 20)
+    if ks % 2 == 0:
+        ks += 1
+    arr = row_pos.reshape(1, -1).astype(np.float32)
+    row_pos_smoothed = cv2.GaussianBlur(arr, (ks, 1), 0).flatten()
+
+    # 8. Peak gradient row within the band
+    peak_grad = int(np.argmax(row_pos_smoothed))
+
+    # 9. Otsu bright-region top
+    _, thresh = cv2.threshold(enhanced, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    kernel_3x3 = np.ones((3, 3), np.uint8)
+    thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel_3x3)
+    row_mean = thresh.mean(axis=1).astype(np.float32)
+    arr2 = row_mean.reshape(1, -1)
+    row_mean_smoothed = cv2.GaussianBlur(arr2, (ks, 1), 0).flatten()
+    max_bri = float(row_mean_smoothed.max())
+    if max_bri > 0:
+        bright_rows = np.where(row_mean_smoothed > 0.25 * max_bri)[0]
+        peak_otsu = int(bright_rows[0]) if len(bright_rows) > 0 else peak_grad
+    else:
+        peak_otsu = peak_grad
+
+    # 10. Combine: average if close, else trust gradient peak
+    if abs(peak_grad - peak_otsu) < 0.05 * band_h:
+        peak_combined = int(round((peak_grad + peak_otsu) / 2.0))
+    else:
+        peak_combined = peak_grad
+
+    # 11. Map back to original image coordinates
+    meniscus_y = offset_y + search_top + peak_combined
+
+    # 12. Return
+    return int(meniscus_y)
+
+def annotate_image(img_bgr, meniscus_y, roi_rect, calib_top, calib_bottom, height_mm, diagnostics=None):
+    """Draw annotations on a copy of img_bgr and return the annotated copy."""
+    out = img_bgr.copy()
+    h_img, w_img = out.shape[:2]
+
+    # ROI rectangle (green)
+    if roi_rect is not None:
+        x1, y1, x2, y2 = roi_rect
+        cv2.rectangle(out, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
+    # Calibration dots
+    if calib_top is not None:
+        cv2.circle(out, tuple(calib_top), 2, (0, 255, 255), -1)  # yellow (BGR)
+    if calib_bottom is not None:
+        cv2.circle(out, tuple(calib_bottom), 2, (255, 255, 0), -1)  # cyan (BGR)
+
+    # Orange dashed line between calibration points
+    if calib_top is not None and calib_bottom is not None:
+        x1c, y1c = calib_top
+        x2c, y2c = calib_bottom
+        dx = x2c - x1c
+        dy = y2c - y1c
+        length = float(np.sqrt(dx * dx + dy * dy))
+        if length > 0:
+            ux, uy = dx / length, dy / length
+            t = 0.0
+            while t < length:
+                p1 = (int(x1c + ux * t), int(y1c + uy * t))
+                t_end = min(t + 10.0, length)
+                p2 = (int(x1c + ux * t_end), int(y1c + uy * t_end))
+                cv2.line(out, p1, p2, (0, 165, 255), 2)  # orange in BGR
+                t += 15.0  # 10 px drawn + 5 px gap
+    
+    # Meniscus line — thin and precise
+    y_int = int(round(meniscus_y))
+    cv2.line(out, (0, y_int), (w_img, y_int), (0, 0, 255), 1, cv2.LINE_AA)
+    
+    # Optional indicator if ROI exists
+    if roi_rect is not None:
+        x1, y1, x2, y2 = roi_rect
+        center_x = (x1 + x2) // 2
+        cv2.circle(out, (center_x, y_int), 3, (0, 255, 0), -1, cv2.LINE_AA)
+
+    # Draw the spatial polynomial fitted curve (Shape of meniscus)
+    if diagnostics and "spatial_coeffs" in diagnostics and diagnostics["spatial_coeffs"]:
+        s_coeffs = diagnostics["spatial_coeffs"]
+        if len(s_coeffs) == 3:
+            A, B, C = s_coeffs
+            if roi_rect is not None:
+                x_start, _, x_end, _ = roi_rect
+            else:
+                x_start, x_end = 0, w_img
+            
+            poly_pts = []
+            for x_val in range(int(x_start), int(x_end)):
+                y_val = int(round(A * x_val**2 + B * x_val + C))
+                # Only draw if it's somewhat close to the meniscus to avoid drawing wild extrapolations
+                if abs(y_val - meniscus_y) < 200:
+                    poly_pts.append([x_val, y_val])
+            
+            if poly_pts:
+                poly_pts = np.array([poly_pts], dtype=np.int32)
+                cv2.polylines(out, poly_pts, False, (255, 200, 0), 2, cv2.LINE_AA) # Light blue/Cyan curve
+
+    # Draw contour if available
+    if diagnostics and "contour" in diagnostics and diagnostics["contour"]:
+        pts = diagnostics["contour"]
+        if len(pts) > 0:
+            for pt in pts:
+                px, py = int(pt["x"]), int(pt["y"])
+                cv2.circle(out, (px, py), 2, (255, 0, 255), -1, cv2.LINE_AA)
+
+    return out

@@ -401,6 +401,15 @@
                     No images loaded.
                 </div>
 
+                <!-- ── STEP 0: Geometry ── -->
+                <div class="step-header">0️⃣ &nbsp;REACTOR GEOMETRY</div>
+                <div style="margin-bottom: 12px;">
+                    <select id="reactorGeometry" onchange="toggleGeometryUI()" style="background:#21262d; border-color:#58a6ff; color:#58a6ff; font-weight:bold;">
+                        <option value="tubular">Tubular Reactor</option>
+                        <option value="spherical">Spherical Reactor</option>
+                    </select>
+                </div>
+
                 <!-- ── STEP 2: ROI ── -->
                 <div class="step-header">
                     2️⃣ &nbsp;ROI &nbsp;<span
@@ -424,51 +433,72 @@
                 </button>
 
                 <!-- ── STEP 3: Calibration ── -->
-                <div class="step-header">
-                    3️⃣ &nbsp;CALIBRATION &nbsp;<span
-                        style="font-weight: normal; font-size: 10px"
-                        >(shared)</span
+                <div id="tubularCalibrationArea">
+                    <div class="step-header">
+                        3️⃣ &nbsp;CALIBRATION &nbsp;<span
+                            style="font-weight: normal; font-size: 10px"
+                            >(shared)</span
+                        >
+                    </div>
+
+                    <!-- Prominent mm box -->
+                    <div class="calib-mm-box">
+                        <span class="calib-mm-icon">📏</span>
+                        <span class="calib-mm-label"
+                            >Reference distance<br />between ▲ TOP and ▼ BOTTOM
+                            marks</span
+                        >
+                        <input
+                            type="number"
+                            id="mmInput"
+                            class="calib-mm-input"
+                            value="92.0"
+                            step="any"
+                            min="0.001"
+                        />
+                        <span class="calib-mm-unit">mm</span>
+                    </div>
+
+                    <button class="btn-warning" onclick="startCalibTop()">
+                        🔺 Click TOP Calibration Point
+                    </button>
+                    <button class="btn-warning" onclick="startCalibBottom()">
+                        🔽 Click BOTTOM Calibration Point
+                    </button>
+                    <p class="info-text">
+                        Click the button, then click on the
+                        <strong>image canvas</strong>.
+                    </p>
+                    <button
+                        class="btn-secondary"
+                        style="font-size: 11px; margin-top: 3px"
+                        onclick="copyBaseCalibration()"
+                        title="Copy calibration points from Base Image to the selected image"
                     >
+                        📋 Copy Base Calib → Current
+                    </button>
+                    <div id="calibStatus" class="status status-empty">
+                        Not calibrated.
+                    </div>
                 </div>
 
-                <!-- Prominent mm box -->
-                <div class="calib-mm-box">
-                    <span class="calib-mm-icon">📏</span>
-                    <span class="calib-mm-label"
-                        >Reference distance<br />between ▲ TOP and ▼ BOTTOM
-                        marks</span
-                    >
-                    <input
-                        type="number"
-                        id="mmInput"
-                        class="calib-mm-input"
-                        value="92.0"
-                        step="any"
-                        min="0.001"
-                    />
-                    <span class="calib-mm-unit">mm</span>
-                </div>
-
-                <button class="btn-warning" onclick="startCalibTop()">
-                    🔺 Click TOP Calibration Point
-                </button>
-                <button class="btn-warning" onclick="startCalibBottom()">
-                    🔽 Click BOTTOM Calibration Point
-                </button>
-                <p class="info-text">
-                    Click the button, then click on the
-                    <strong>image canvas</strong>.
-                </p>
-                <button
-                    class="btn-secondary"
-                    style="font-size: 11px; margin-top: 3px"
-                    onclick="copyBaseCalibration()"
-                    title="Copy calibration points from Base Image to the selected image"
-                >
-                    📋 Copy Base Calib → Current
-                </button>
-                <div id="calibStatus" class="status status-empty">
-                    Not calibrated.
+                <div id="sphericalCalibrationArea" style="display: none;">
+                    <div class="step-header">
+                        3️⃣ &nbsp;SPHERICAL SETTINGS
+                    </div>
+                    <div class="calib-mm-box">
+                        <span class="calib-mm-icon">📏</span>
+                        <span class="calib-mm-label">Actual Physical Diameter</span>
+                        <input
+                            type="number"
+                            id="physicalDiameterInput"
+                            class="calib-mm-input"
+                            value="50.0"
+                            step="any"
+                            min="0.001"
+                        />
+                        <span class="calib-mm-unit">mm</span>
+                    </div>
                 </div>
 
                 <!-- ── STEP 4: Metadata ── -->
@@ -659,7 +689,22 @@ const resultsList = document.getElementById("resultsList");
 // ═══════════════════════════════════════════════
 window.addEventListener("load", () => {
     drawPlaceholder();
+    toggleGeometryUI();
 });
+
+function toggleGeometryUI() {
+    const geo = document.getElementById("reactorGeometry").value;
+    const tubArea = document.getElementById("tubularCalibrationArea");
+    const sphArea = document.getElementById("sphericalCalibrationArea");
+    
+    if (geo === "spherical") {
+        tubArea.style.display = "none";
+        sphArea.style.display = "block";
+    } else {
+        tubArea.style.display = "block";
+        sphArea.style.display = "none";
+    }
+}
 
 function drawPlaceholder() {
     const wrap = mainCanvas.parentElement;
@@ -1233,15 +1278,19 @@ function runDetection() {
         return;
     }
     
-    if (!state.points.calibTop[id] || !state.points.calibBottom[id]) {
-        setStatus("resultStatus", "❌ Set both TOP and BOTTOM calibration points.", "error");
-        return;
-    }
-
     const method = document.getElementById("methodSelect").value;
     const slope = parseFloat(document.getElementById("slopeInput").value) || 1.0;
     const intercept = parseFloat(document.getElementById("interceptInput").value) || 0.0;
     const mm = parseFloat(document.getElementById("mmInput").value) || 92.0;
+
+    const geometry = document.getElementById("reactorGeometry") ? document.getElementById("reactorGeometry").value : "tubular";
+    const physical_diameter = document.getElementById("physicalDiameterInput") ? parseFloat(document.getElementById("physicalDiameterInput").value) || 50.0 : 50.0;
+
+    // Check calibration if tubular
+    if (geometry === "tubular" && (!state.points.calibTop[id] || !state.points.calibBottom[id])) {
+        setStatus("resultStatus", "❌ Set both TOP and BOTTOM calibration points.", "error");
+        return;
+    }
 
     const meta = {
         date_time: document.getElementById("metaDate").value,
@@ -1257,7 +1306,7 @@ function runDetection() {
     fetch("/api/detect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image_id: id, method, slope, intercept, mm, ...meta }),
+        body: JSON.stringify({ image_id: id, method, slope, intercept, mm, geometry, physical_diameter, ...meta }),
     })
     .then(r => r.json())
     .then(data => {
