@@ -890,6 +890,35 @@ def api_set_base_image():
     return jsonify({"success": True, "base_id": image_id})
 
 
+@app.route("/api/summary-report", methods=["GET"])
+def api_summary_report():
+    """Return the contents of the central CSV report as JSON."""
+    csv_path = os.path.join("results", "summary_report.csv")
+    if not os.path.isfile(csv_path):
+        return jsonify({"headers": [], "rows": []})
+        
+    try:
+        with open(csv_path, mode='r', encoding='utf-8') as f:
+            reader = csv.reader(f)
+            data = list(reader)
+            
+        if not data:
+            return jsonify({"headers": [], "rows": []})
+            
+        headers = data[0]
+        rows = data[1:]
+        return jsonify({"headers": headers, "rows": rows})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/summary-report/download", methods=["GET"])
+def api_download_summary():
+    """Download the CSV report."""
+    if os.path.isfile(os.path.join("results", "summary_report.csv")):
+        return send_from_directory("results", "summary_report.csv", as_attachment=True)
+    return "No report found", 404
+
+
 @app.route("/api/reset", methods=["POST"])
 def api_reset():
     """Reset all state back to defaults."""

@@ -572,12 +572,17 @@
                     </div>
 
                 <!-- ── Utilities ── -->
-                <div style="margin-top: auto; padding-top: 12px; display: flex; gap: 8px;">
-                    <button class="btn-util" onclick="openSessionsModal()" style="background-color: #2196F3; flex: 1;">
-                        📂 &nbsp;Load Session
-                    </button>
-                    <button class="btn-util" onclick="resetAll()" style="flex: 1;">
-                        🗑️ &nbsp;Reset All
+                <div style="margin-top: auto; padding-top: 12px; display: flex; flex-direction: column; gap: 8px;">
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn-util" onclick="openSessionsModal()" style="background-color: #2196F3; flex: 1;">
+                            📂 &nbsp;Load Session
+                        </button>
+                        <button class="btn-util" onclick="resetAll()" style="flex: 1;">
+                            🗑️ &nbsp;Reset All
+                        </button>
+                    </div>
+                    <button class="btn-util" onclick="openSummaryModal()" style="background-color: #4CAF50;">
+                        📊 &nbsp;View Summary Report
                     </button>
                 </div>
 
@@ -1523,6 +1528,31 @@ window.addEventListener("resize", () => {
 
 </script>
 
+    <!-- Summary Report Modal -->
+    <div id="summaryModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; align-items: center; justify-content: center;">
+        <div style="background: #1e1e1e; width: 90%; max-width: 1000px; max-height: 85vh; border-radius: 8px; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+            <div style="padding: 16px 20px; background: #252526; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333;">
+                <h3 style="margin: 0; color: #fff; font-weight: 500;">📊 CSV Summary Report</h3>
+                <div>
+                    <button onclick="downloadCSV()" class="btn-util" style="background-color: #007ACC; padding: 6px 12px; font-size: 13px; margin-right: 12px; border: none; border-radius: 4px; color: white; cursor: pointer;">
+                        📥 Download CSV
+                    </button>
+                    <button onclick="closeSummaryModal()" style="background: none; border: none; color: #aaa; cursor: pointer; font-size: 24px; padding: 0; line-height: 1;">&times;</button>
+                </div>
+            </div>
+            <div style="padding: 0; overflow: auto; flex: 1;">
+                <table id="summaryTable" style="width: 100%; border-collapse: collapse; color: #ddd; font-size: 13px; text-align: left;">
+                    <thead style="background: #2d2d2d; position: sticky; top: 0; z-index: 1;">
+                        <tr id="summaryTableHead"></tr>
+                    </thead>
+                    <tbody id="summaryTableBody">
+                    </tbody>
+                </table>
+                <div id="summaryLoading" style="padding: 40px; text-align: center; color: #888;">Loading report data...</div>
+            </div>
+        </div>
+    </div>
+
     <!-- Sessions Modal -->
     <div id="sessionsModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center;">
         <div style="background: #2a2a2a; width: 500px; max-height: 80vh; border-radius: 8px; display: flex; flex-direction: column; overflow: hidden;">
@@ -1626,6 +1656,62 @@ H = ${m.height_mm} mm, V = ${m.volume_ml} ml`, "ready");
                 .catch(err => {
                     setStatus("resultStatus", "❌ Failed to load: " + err.message, "error");
                 });
+        }
+
+        // Summary Modal Functions
+        function openSummaryModal() {
+            document.getElementById("summaryModal").style.display = "flex";
+            document.getElementById("summaryTableHead").innerHTML = "";
+            document.getElementById("summaryTableBody").innerHTML = "";
+            document.getElementById("summaryLoading").style.display = "block";
+            document.getElementById("summaryLoading").innerText = "Loading report data...";
+
+            fetch('/api/summary-report')
+                .then(r => r.json())
+                .then(data => {
+                    document.getElementById("summaryLoading").style.display = "none";
+                    if (data.error) throw new Error(data.error);
+                    
+                    if (!data.headers || data.headers.length === 0) {
+                        document.getElementById("summaryLoading").style.display = "block";
+                        document.getElementById("summaryLoading").innerText = "No data found. Run a detection to generate the CSV.";
+                        return;
+                    }
+
+                    // Render Headers
+                    let headHtml = "";
+                    data.headers.forEach(h => {
+                        headHtml += `<th style="padding: 10px 12px; border-bottom: 1px solid #444; font-weight: 600; color: #ccc; white-space: nowrap;">${h}</th>`;
+                    });
+                    document.getElementById("summaryTableHead").innerHTML = headHtml;
+
+                    // Render Rows
+                    let bodyHtml = "";
+                    data.rows.forEach((row, i) => {
+                        const bg = i % 2 === 0 ? "#1e1e1e" : "#222222";
+                        bodyHtml += `<tr style="background: ${bg}; border-bottom: 1px solid #333;">`;
+                        row.forEach((cell, cellIdx) => {
+                            // Highlight swelling factor if it exists
+                            const isSF = data.headers[cellIdx] === "Swelling Factor" && cell;
+                            const cellStyle = isSF ? "color: #4CAF50; font-weight: bold;" : "";
+                            bodyHtml += `<td style="padding: 8px 12px; white-space: nowrap; ${cellStyle}">${cell}</td>`;
+                        });
+                        bodyHtml += `</tr>`;
+                    });
+                    document.getElementById("summaryTableBody").innerHTML = bodyHtml;
+                })
+                .catch(err => {
+                    document.getElementById("summaryLoading").style.display = "block";
+                    document.getElementById("summaryLoading").innerHTML = `<span style="color:red">Error: ${err.message}</span>`;
+                });
+        }
+
+        function closeSummaryModal() {
+            document.getElementById("summaryModal").style.display = "none";
+        }
+
+        function downloadCSV() {
+            window.location.href = '/api/summary-report/download';
         }
     </script>
     </body>
