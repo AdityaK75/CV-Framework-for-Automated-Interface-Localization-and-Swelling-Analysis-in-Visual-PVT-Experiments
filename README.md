@@ -1,5 +1,7 @@
 # PVT Swelling Analyzer Architecture
 
+**Designed & Developed by [Aditya Kanagalekar](https://github.com/AdityaK75)**
+
 This repository contains a robust, computer-vision driven web application for analyzing PVT swelling test images. The application is designed to accurately detect and trace glowing fluid meniscus boundaries under heavy glare, allowing for precise fluid volume and relative swelling factor measurements over time.
 
 The application architecture is strictly divided into three core files that handle the frontend, backend routing, and mathematical image processing separately.

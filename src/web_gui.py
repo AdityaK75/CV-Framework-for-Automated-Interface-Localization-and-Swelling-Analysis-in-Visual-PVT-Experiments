@@ -1,3 +1,5 @@
+__author__ = "Aditya Kanagalekar"
+
 import base64
 import logging
 import os
@@ -264,6 +266,22 @@ def annotate_image(img_bgr, meniscus_y, roi_rect, calib_top, calib_bottom, heigh
             for pt in pts:
                 px, py = int(pt["x"]), int(pt["y"])
                 cv2.circle(out, (px, py), 2, (255, 0, 255), -1, cv2.LINE_AA)
+
+    # Authorship Watermark
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    text = "Analysis by Aditya Kanagalekar"
+    font_scale = 0.5
+    thickness = 1
+    text_size = cv2.getTextSize(text, font, font_scale, thickness)[0]
+    
+    padding = 10
+    text_x = w_img - text_size[0] - padding
+    text_y = h_img - padding
+    
+    # Draw subtle background rectangle for readability
+    cv2.rectangle(out, (text_x - 5, text_y - text_size[1] - 5), (w_img - 5, h_img - 5), (30, 30, 30), -1)
+    # Draw text
+    cv2.putText(out, text, (text_x, text_y), font, font_scale, (150, 150, 150), thickness, cv2.LINE_AA)
 
     return out
 
@@ -938,7 +956,9 @@ def api_load_result(image_id):
 
 if __name__ == "__main__":
     print("=" * 55)
-    print("  PVT Auto-Swelling Web GUI")
-    print("  http://localhost:5006")
+    print("               PVT Auto-Swelling Web GUI")
+    print("           Developed by: Aditya Kanagalekar")
+    print("=" * 55)
+    print("  Access at: http://localhost:5006")
     print("=" * 55)
     app.run(debug=False, host="localhost", port=5006, threaded=True)

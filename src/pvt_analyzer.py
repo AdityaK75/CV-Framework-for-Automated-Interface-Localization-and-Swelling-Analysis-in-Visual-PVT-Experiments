@@ -1,3 +1,5 @@
+__author__ = "Aditya Kanagalekar"
+
 import cv2
 import matplotlib  # ADD THIS
 import numpy as np
